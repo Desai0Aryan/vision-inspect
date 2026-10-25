@@ -4,10 +4,10 @@ Detect, localize and classify manufacturing defects in images and video, with a
 fair comparison between a classical baseline and a fine-tuned deep detector,
 an optimized (ONNX / INT8) inference path, a FastAPI service and a React dashboard.
 
-> **Build status:** Part 2 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
+> **Build status:** Part 3 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ```
-[██████████░░░░░░░░░░░░░░░░░░░░] 2/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅
+[███████████████░░░░░░░░░░░░░░░] 3/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅
 ```
 
 ## What is in Part 1
@@ -63,7 +63,7 @@ Each model's confidence threshold is tuned for F1 on `val`, never on test.
 Per-class AP@0.5 (classical → YOLO): scratch 0.69 → 0.97, crack 0.36 → 1.00, stain 0.71 → 1.00, missing_part 0.94 → 1.00.
 
 **The trade-off:** YOLO is much more accurate but about 5x slower on this 2-core CPU in plain PyTorch.
-Closing that gap with ONNX Runtime, INT8 quantization and batching is Part 3.
+Part 3 closes that gap. (The 105 ms here is a single un-batched pass; the controlled benchmark below measures PyTorch at about 57-69 ms.)
 
 Artifacts: `outputs/compare/` (metrics table, PR curves, per-class AP, class-confusion matrices, qualitative grid)
 and `outputs/yolo_training/` (loss and mAP curves). Reproduce with:
@@ -76,11 +76,38 @@ python scripts/compare_models.py --split test --yolo models/yolo_pretrained.pt -
 Caveats: the data is synthetic and fairly clean, so near-perfect scores are expected and will drop on real
 factory images. The pretraining ablation (`--scratch`) is implemented but was not run here, to keep CPU time down.
 
+## Part 3: inference optimization (ONNX Runtime, INT8, batching)
+
+The trained YOLO is exported to ONNX (dynamic batch), then quantized to INT8 with ONNX Runtime static
+quantization (QDQ, per-channel weights, MinMax calibration on 64 training images). All numbers are end to end
+(letterbox + model + NMS) on the 150-image test split, 2 CPU threads.
+
+| Backend | Size | mAP@0.5 | mAP@0.5:0.95 | ms/img bs=1 | ms/img bs=4 | Best throughput | Speed-up (bs=1) |
+|---|---|---|---|---|---|---|---|
+| PyTorch FP32 | 6.5 MB | 0.991 | 0.830 | 68.6 | 57.2 | 17.5 img/s | 1.0x |
+| ONNX Runtime FP32 | 12.9 MB | 0.991 | 0.830 | 38.5 | 35.8 | 28.0 img/s | 1.8x |
+| **ONNX Runtime INT8** | **3.8 MB** | 0.988 | 0.807 | **25.7** | **21.8** | **45.9 img/s** | **2.7x** |
+
+* ONNX FP32 reproduces PyTorch accuracy exactly, which validates the custom letterbox / decode / NMS code.
+* INT8 is **2.6x faster** than PyTorch at batch 4 and **3.4x smaller**, for -0.003 mAP@0.5 and -0.023 mAP@0.5:0.95.
+* Batching helps a little (about 10-15%) on a 2-core CPU; it would help far more on a GPU.
+* Timings on a shared 2-core VM vary by roughly +/-15% run to run. The ranking and the ratios are stable.
+
+**Lesson learned (kept as a documented ablation):** quantizing *every* node (`--naive`) gives **mAP = 0.000**.
+The YOLOv8 head's final 1x1 class predictor outputs logits with a huge dynamic range, and 8-bit activations flush the
+class scores to zero. Keeping the 118 nodes of the final box/class predictors and the decode in float, while quantizing
+the rest, recovers 99.7% of the accuracy and is the default recipe in `scripts/export_onnx.py`.
+
+```bash
+python scripts/export_onnx.py --weights models/yolo_pretrained.pt --imgsz 512 --calib 64
+python scripts/benchmark.py --split test      # -> outputs/benchmark/{benchmark.md,benchmark.json,latency_throughput.png}
+```
+
 ## Roadmap
 
 1. ✅ Foundations: dataset, metrics, baseline, tests
 2. ✅ Train and compare a pretrained YOLO against the baseline
-3. ⏳ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
+3. ✅ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
 4. ⏳ FastAPI backend: video upload, live stream, tracking, downloadable report
 5. ⏳ React dashboard
 6. ⏳ Docker, CI, docs, polish
