@@ -1,0 +1,9 @@
+numpy>=1.26
+opencv-python-headless>=4.9
+pyyaml>=6.0
+tqdm>=4.66
+pytest>=8.0
+# Added in later parts:
+# torch, torchvision, ultralytics   (Part 2)
+# onnx, onnxruntime                 (Part 3)
+# fastapi, uvicorn[standard], python-multipart, reportlab  (Part 4)

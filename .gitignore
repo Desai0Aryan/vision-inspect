@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+data/inspect/
+runs/
+*.pt
+*.onnx
+node_modules/
+dist/
+.env
