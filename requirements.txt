@@ -4,6 +4,9 @@ pyyaml>=6.0
 tqdm>=4.66
 pytest>=8.0
 # Added in later parts:
-# torch, torchvision, ultralytics   (Part 2)
+torch>=2.2
+torchvision
+ultralytics>=8.3
+matplotlib>=3.8
 # onnx, onnxruntime                 (Part 3)
 # fastapi, uvicorn[standard], python-multipart, reportlab  (Part 4)

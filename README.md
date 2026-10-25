@@ -4,10 +4,10 @@ Detect, localize and classify manufacturing defects in images and video, with a
 fair comparison between a classical baseline and a fine-tuned deep detector,
 an optimized (ONNX / INT8) inference path, a FastAPI service and a React dashboard.
 
-> **Build status:** Part 1 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
+> **Build status:** Part 2 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ```
-[██████░░░░░░░░░░░░░░░░░░░░░░░░] 1/6 parts  ·  Foundations + baseline ✅
+[██████████░░░░░░░░░░░░░░░░░░░░] 2/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅
 ```
 
 ## What is in Part 1
@@ -49,10 +49,37 @@ The baseline is strong on rigid, template-like cases (`missing_part`) and weak o
 cracks, which look a lot like scratches and stains to a rule-based system. This is
 exactly where a learned detector should win in Part 2.
 
+## Part 2: pretrained YOLO vs classical baseline
+
+COCO-pretrained **YOLOv8n** fine-tuned for 12 epochs at 512 px on CPU (about 45 minutes on 2 cores).
+Both models go through the *same* evaluator on the held-out test split (150 images).
+Each model's confidence threshold is tuned for F1 on `val`, never on test.
+
+| Model | mAP@0.5 | mAP@0.5:0.95 | Precision | Recall | F1 | Image-level acc | CPU latency |
+|---|---|---|---|---|---|---|---|
+| Classical OpenCV | 0.673 | 0.479 | 0.813 | 0.735 | 0.772 | 0.967 | 22 ms (46 FPS) |
+| **YOLOv8n (pretrained)** | **0.991** | **0.830** | **0.989** | **0.989** | **0.989** | **1.000** | 105 ms (9.6 FPS) |
+
+Per-class AP@0.5 (classical → YOLO): scratch 0.69 → 0.97, crack 0.36 → 1.00, stain 0.71 → 1.00, missing_part 0.94 → 1.00.
+
+**The trade-off:** YOLO is much more accurate but about 5x slower on this 2-core CPU in plain PyTorch.
+Closing that gap with ONNX Runtime, INT8 quantization and batching is Part 3.
+
+Artifacts: `outputs/compare/` (metrics table, PR curves, per-class AP, class-confusion matrices, qualitative grid)
+and `outputs/yolo_training/` (loss and mAP curves). Reproduce with:
+
+```bash
+python scripts/train_yolo.py --weights models/yolov8n.pt --epochs 12 --imgsz 512 --name yolo_pretrained
+python scripts/compare_models.py --split test --yolo models/yolo_pretrained.pt --imgsz 512
+```
+
+Caveats: the data is synthetic and fairly clean, so near-perfect scores are expected and will drop on real
+factory images. The pretraining ablation (`--scratch`) is implemented but was not run here, to keep CPU time down.
+
 ## Roadmap
 
 1. ✅ Foundations: dataset, metrics, baseline, tests
-2. ⏳ Train and compare a pretrained YOLO against the baseline
+2. ✅ Train and compare a pretrained YOLO against the baseline
 3. ⏳ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
 4. ⏳ FastAPI backend: video upload, live stream, tracking, downloadable report
 5. ⏳ React dashboard
