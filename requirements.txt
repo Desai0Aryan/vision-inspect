@@ -11,4 +11,10 @@ matplotlib>=3.8
 onnx>=1.16
 onnxruntime>=1.18
 onnxslim
-# fastapi, uvicorn[standard], python-multipart, reportlab  (Part 4)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+reportlab>=4.0
+httpx>=0.27
+websockets>=12
+imageio-ffmpeg>=0.5

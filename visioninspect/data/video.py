@@ -16,12 +16,12 @@ from visioninspect.data.synth import make_background, render_plate, sample_spec
 
 
 def make_demo_video(out_path: str | Path, seconds: int = 14, fps: int = 30, W: int = 960, H: int = 540,
-                    seed: int = 7, n_parts: int = 6, scale: float = 0.62) -> dict:
+                    seed: int = 7, n_parts: int = 6, scale: float = 1.0, spacing: int | None = None) -> dict:
     rng = np.random.default_rng(seed)
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     total = seconds * fps
-    spacing = 340  # px between part origins, wider than a part so none overlap
+    spacing = spacing or int(420 * scale) + 60  # px between part origins, wider than a part so none overlap
     belt_speed = (n_parts * spacing + W + 300) / total  # px / frame, so every part crosses the scene
     parts = []
     for i in range(n_parts):
@@ -31,7 +31,7 @@ def make_demo_video(out_path: str | Path, seconds: int = 14, fps: int = 30, W: i
         plate = cv2.resize(plate, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
         boxes = [(c, x1 * scale, y1 * scale, x2 * scale, y2 * scale) for c, x1, y1, x2, y2 in boxes]
         parts.append({"img": plate, "boxes": boxes, "x0": -plate.shape[1] - i * spacing,
-                      "y": int(rng.integers(90, H - plate.shape[0] - 70))})
+                      "y": int(rng.integers(50, max(51, H - plate.shape[0] - 40)))})
     base_bg = make_background(rng, W + 64, H)
     vw = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (W, H))
     gt = {"fps": fps, "width": W, "height": H, "classes": CLASSES, "frames": []}

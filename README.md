@@ -4,10 +4,10 @@ Detect, localize and classify manufacturing defects in images and video, with a
 fair comparison between a classical baseline and a fine-tuned deep detector,
 an optimized (ONNX / INT8) inference path, a FastAPI service and a React dashboard.
 
-> **Build status:** Part 3 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
+> **Build status:** Part 4 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ```
-[███████████████░░░░░░░░░░░░░░░] 3/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅
+[████████████████████░░░░░░░░░░] 4/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅  ·  API ✅
 ```
 
 ## What is in Part 1
@@ -103,12 +103,66 @@ python scripts/export_onnx.py --weights models/yolo_pretrained.pt --imgsz 512 --
 python scripts/benchmark.py --split test      # -> outputs/benchmark/{benchmark.md,benchmark.json,latency_throughput.png}
 ```
 
+## Part 4: FastAPI service, tracking and reports
+
+```bash
+pip install -r requirements.txt
+uvicorn api.main:app --port 8000          # interactive docs at http://localhost:8000/docs
+```
+
+| Endpoint | What it does |
+|---|---|
+| `POST /api/predict/image` | one image in, detections + latency + annotated JPEG out |
+| `POST /api/jobs` (and `/api/jobs/demo`) | upload a clip, inspect it in the background, `frame_stride` / `conf` / model selectable |
+| `GET /api/jobs/{id}` | status, progress, full summary |
+| `GET /api/jobs/{id}/video` | annotated H.264 video (HTTP range supported, plays in any browser) |
+| `GET /api/jobs/{id}/report.{pdf,csv,json}` | downloadable report |
+| `WS /ws/jobs/{id}` | live progress + preview frames while a job runs |
+| `WS /ws/live` | send webcam JPEG frames, get detections + latency back |
+| `GET /api/stream/demo` | MJPEG stream of the conveyor clip inspected live |
+| `GET /api/benchmarks`, `/api/models`, `/metrics` | results from Parts 2-3, backend list, Prometheus-style counters |
+
+**What the video pipeline does** (`visioninspect/pipeline.py`):
+detect (ONNX INT8) → **track defects** (SORT-style IoU tracker, so one scratch seen in 120 frames is counted once)
+→ **track parts** (colour segmentation + tracker) → per-part OK / NOK verdict → yield, defect rate and an **alert** when the
+rejection rate passes a threshold → annotated video with HUD (FPS, latency, counts) → JSON / CSV / **PDF report** with charts and
+the best crop of every defect.
+
+### Whole-system results on the demo conveyor clip (6 parts, 4 defective, 7 true defects)
+
+Scored against per-frame ground truth with `scripts/eval_video.py`, INT8 model:
+
+| Setting | Frame mAP@0.5 | Parts counted | Verdict accuracy | Unique defects (truth 7) | Speed vs real time |
+|---|---|---|---|---|---|
+| Close camera, detector on every frame | 0.973 | 6 / 6 | 100% | 7 | 0.58x |
+| Close camera, every 2nd frame | n/a* | 6 / 6 | 100% | 7 | 0.99x |
+| Close camera, every 3rd frame | n/a* | 6 / 6 | 100% | 7 | **1.23x** |
+| Far camera (parts 0.62x smaller) | 0.514 | 6 / 6 | 100% | 10 | 0.54x |
+
+\* Frame-level mAP is only meaningful when the detector runs on every frame. System-level results are unchanged by frame skipping
+because the tracker carries each defect between inferences.
+
+Things worth knowing:
+
+* **Frame skipping plus tracking buys real time for free:** running the detector on every 3rd frame lifts throughput from 0.58x to 1.23x real time
+  with identical part and defect counts. (Absolute speed depends on the host; this sandbox's CPU speed changed between sessions, so only
+  compare numbers inside one row-group.)
+* **Scale sensitivity is the model's real weakness.** The model trained on parts filling about 60% of the frame. In the far-camera clip they fill about
+  25%, and frame-level mAP falls from 0.97 to 0.51 and the tracker over-counts defects (10 vs 7), although the part-level OK / NOK verdicts stay
+  correct. That is a data-coverage problem, not a bug; the fix is multi-scale training data or a two-stage crop-then-detect design.
+  The far clip ships as `data/demo/conveyor_far.mp4` so you can reproduce it.
+
+```bash
+python scripts/make_demo_video.py --out data/demo/conveyor_far.mp4 --scale 0.62 --seconds 14
+python scripts/eval_video.py --video data/demo/conveyor.mp4 --model int8 --stride 3
+```
+
 ## Roadmap
 
 1. ✅ Foundations: dataset, metrics, baseline, tests
 2. ✅ Train and compare a pretrained YOLO against the baseline
 3. ✅ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
-4. ⏳ FastAPI backend: video upload, live stream, tracking, downloadable report
+4. ✅ FastAPI backend: video upload, live stream, tracking, downloadable report
 5. ⏳ React dashboard
 6. ⏳ Docker, CI, docs, polish
 

@@ -1,6 +1,6 @@
 PY ?= python3
 
-.PHONY: data video baseline train compare export bench test clean
+.PHONY: data video baseline train compare export bench serve eval-video test clean
 
 data:
 	$(PY) scripts/make_dataset.py --out data/inspect --train 600 --val 150 --test 150
@@ -22,6 +22,12 @@ export:
 
 bench:
 	$(PY) scripts/benchmark.py --split test
+
+serve:
+	uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+eval-video:
+	$(PY) scripts/eval_video.py --video data/demo/conveyor.mp4 --model int8 --stride 3
 
 test:
 	$(PY) -m pytest -q

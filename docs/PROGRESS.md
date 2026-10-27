@@ -1,7 +1,7 @@
 # Build progress
 
 ```
-[███████████████░░░░░░░░░░░░░░░]  3 / 6   (50%)
+[████████████████████░░░░░░░░░░]  4 / 6   (67%)
 ```
 
 | # | Part | Status |
@@ -9,8 +9,8 @@
 | 1 | Scaffold, synthetic dataset, metrics, classical baseline | ✅ done |
 | 2 | Train pretrained YOLO, compare against baseline (P / R / mAP) | ✅ done |
 | 3 | ONNX Runtime, INT8 quantization, batching, latency benchmarks | ✅ done |
-| 4 | FastAPI backend: upload, live stream, tracking, report | ⏳ next |
-| 5 | React dashboard | ⏳ |
+| 4 | FastAPI backend: upload, live stream, tracking, report | ✅ done |
+| 5 | React dashboard | ⏳ next |
 | 6 | Docker, CI, docs, polish | ⏳ |
 
 ## Part 1 deliverables
@@ -31,3 +31,11 @@
 - Models: `models/yolo_fp32.onnx`, `models/yolo_int8.onnx`
 - INT8: 2.7x faster than PyTorch at bs=1, 3.4x smaller, mAP@0.5 0.988 vs 0.991
 - 14 unit tests passing
+
+## Part 4 deliverables
+- `api/main.py` (REST + 2 WebSockets + MJPEG), `visioninspect/pipeline.py`, `visioninspect/live.py`, `visioninspect/registry.py`
+- `visioninspect/tracking/tracker.py` (defect tracker + part tracker), `visioninspect/reporting/report.py` (JSON / CSV / PDF)
+- `scripts/eval_video.py` (system-level scoring against per-frame ground truth)
+- Close-camera clip: 6/6 parts, 100% OK/NOK verdicts, 7/7 unique defects, frame mAP@0.5 0.973; 1.23x real time with frame skipping
+- Known weakness documented: far camera (small parts) drops frame mAP to 0.51
+- 21 unit/integration tests passing

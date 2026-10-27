@@ -1,0 +1,41 @@
+{
+  "model": "int8",
+  "video": "data/demo/conveyor.mp4",
+  "frame_stride": 3,
+  "frame_level": {
+    "mAP50": 0.28960396039603964,
+    "precision": 0.9922779922779923,
+    "recall": 0.2960829493087558,
+    "f1": 0.45607808340727596
+  },
+  "system_level": {
+    "parts_counted": 6,
+    "parts_truth": 6,
+    "verdict_accuracy": 1.0,
+    "nok_pred": [
+      2,
+      3,
+      5,
+      6
+    ],
+    "nok_truth": [
+      2,
+      3,
+      5,
+      6
+    ],
+    "unique_defects_pred": 7,
+    "unique_defect_instances_truth_approx": 7
+  },
+  "performance": {
+    "frames_inferred": 180,
+    "latency_ms_mean": 49.53,
+    "latency_ms_p50": 45.43,
+    "latency_ms_p95": 70.3,
+    "latency_ms_max": 124.03,
+    "inference_fps": 20.2,
+    "end_to_end_fps": 36.9,
+    "wall_s": 14.63,
+    "realtime_factor": 1.23
+  }
+}
