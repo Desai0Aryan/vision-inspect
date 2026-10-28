@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph Data["Data and training (offline)"]
+    G["Synthetic generator<br/>4 defect classes"] --> T["YOLOv8n fine-tune<br/>COCO-pretrained"]
+    G --> B["Classical OpenCV<br/>baseline"]
+    T --> X["ONNX export<br/>+ INT8 quantization"]
+    T --> E["Shared evaluator<br/>P / R / mAP / latency"]
+    B --> E
+    X --> E
+  end
+  subgraph Serve["One container: FastAPI"]
+    R["Model registry<br/>int8 / fp32 / pytorch / classical"]
+    P["Video pipeline<br/>frame skip, batching"]
+    K["Trackers<br/>defect + part, OK/NOK"]
+    O["Reports<br/>PDF / CSV / JSON"]
+    R --> P --> K --> O
+  end
+  X --> R
+  UI["React dashboard<br/>Inspect, Live, Single part, Models"]
+  UI <-->|"REST + WebSocket"| P
+  E -. "results JSON" .-> UI
+  Cam["Webcam / video file"] --> UI

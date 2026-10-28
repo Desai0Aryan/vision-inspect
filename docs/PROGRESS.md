@@ -1,7 +1,7 @@
 # Build progress
 
 ```
-[█████████████████████████░░░░░]  5 / 6   (83%)
+[██████████████████████████████]  6 / 6   (100%)
 ```
 
 | # | Part | Status |
@@ -11,7 +11,7 @@
 | 3 | ONNX Runtime, INT8 quantization, batching, latency benchmarks | ✅ done |
 | 4 | FastAPI backend: upload, live stream, tracking, report | ✅ done |
 | 5 | React dashboard | ✅ done |
-| 6 | Docker, CI, docs, polish | ⏳ next |
+| 6 | Docker, CI, docs, polish | ✅ done |
 
 ## Part 1 deliverables
 - Reproducible dataset generator (4 classes) and YOLO-format writer
@@ -46,3 +46,12 @@
 - API additions: sample parts with ground truth, frame stats, static dashboard serving
 - `scripts/ui_smoke.py` (headless browser run, zero console errors), screenshots in `docs/screenshots/`
 - 24 Python tests passing
+
+## Part 6 deliverables
+- `Dockerfile` (ui / runtime / full stages), `docker-compose.yml`, `docker/entrypoint.sh`, `.dockerignore`
+- `requirements-runtime.txt` (serving, no PyTorch) and `requirements-train.txt`
+- `.github/workflows/ci.yml` (tests on 3.11 + 3.12, dashboard build, Docker build + health smoke test)
+- `docs/architecture.png` / `.mmd`, final README, Makefile targets `docker`, `docker-full`, `up`, `down`
+- Registry hides the PyTorch backend when Ultralytics is absent
+- Verified without Docker: 24 tests pass in a torch-free venv; simulated container layout served and processed the demo job
+- Not verified: the actual `docker build` (no daemon in the sandbox)

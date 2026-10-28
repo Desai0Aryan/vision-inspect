@@ -1,0 +1,10 @@
+# Extra packages for training, ONNX export / quantization, benchmarks and tests.
+-r requirements-runtime.txt
+torch>=2.2
+torchvision
+ultralytics>=8.3
+onnx>=1.16
+onnxslim
+pytest>=8.0
+httpx>=0.27
+playwright>=1.44   # only for scripts/ui_smoke.py

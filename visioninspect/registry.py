@@ -5,6 +5,7 @@ A backend is only listed if its weights are present, so the API degrades gracefu
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import threading
 from pathlib import Path
@@ -25,7 +26,10 @@ _lock = threading.Lock()
 
 def available() -> list[dict]:
     out = []
+    has_torch = importlib.util.find_spec("ultralytics") is not None
     for key, (label, path) in _SPEC.items():
+        if key == "pytorch" and not has_torch:
+            continue  # slim runtime image ships without PyTorch
         if path is None or Path(path).exists():
             out.append({"id": key, "label": label, "size_mb": round(Path(path).stat().st_size / 1e6, 1) if path else 0.0})
     return out

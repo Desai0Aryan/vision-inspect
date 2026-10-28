@@ -1,5 +1,7 @@
 PY ?= python3
 
+# Docker
+.PHONY: docker docker-full up down
 .PHONY: data video baseline train compare export bench serve eval-video ui-build ui-dev ui-smoke test clean
 
 data:
@@ -43,3 +45,15 @@ test:
 
 clean:
 	rm -rf data/inspect outputs
+
+docker:
+	docker build -t visioninspect .
+
+docker-full:
+	docker build --target full -t visioninspect:full .
+
+up:
+	docker compose up --build
+
+down:
+	docker compose down

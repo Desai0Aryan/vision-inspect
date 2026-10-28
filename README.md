@@ -4,10 +4,33 @@ Detect, localize and classify manufacturing defects in images and video, with a
 fair comparison between a classical baseline and a fine-tuned deep detector,
 an optimized (ONNX / INT8) inference path, a FastAPI service and a React dashboard.
 
-> **Build status:** Part 5 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
+> **Build status:** all 6 parts complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ```
-[█████████████████████████░░░░░] 5/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅  ·  API ✅  ·  Dashboard ✅
+[██████████████████████████████] 6/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅  ·  API ✅  ·  Dashboard ✅  ·  Docker + CI ✅
+```
+
+## At a glance
+
+| | |
+|---|---|
+| **Accuracy** | Fine-tuned YOLOv8n reaches **0.991 mAP@0.5** on 150 held-out images, against **0.673** for a hand-written OpenCV baseline |
+| **Speed** | ONNX Runtime INT8 is **2.7x faster** than PyTorch (25.7 vs 68.6 ms/img on 2 CPU cores) and **3.4x smaller**, for -0.003 mAP |
+| **Whole line** | On the demo conveyor clip: 6/6 parts counted, 100% correct OK/REJECT verdicts, 7/7 unique defects, frame mAP@0.5 0.973 |
+| **Product** | Upload a video, get annotated playback, per-defect confidence, processing speed, and a PDF / CSV / JSON report |
+| **Run it** | `docker compose up --build`, then open http://localhost:8000 |
+
+### Architecture
+
+![Architecture](docs/architecture.png)
+
+```bash
+# Fastest way to see it (needs Docker)
+docker compose up --build            # dashboard + API on http://localhost:8000
+
+# Without Docker
+pip install -r requirements-runtime.txt     # serving only, no PyTorch
+uvicorn api.main:app --port 8000
 ```
 
 ## What is in Part 1
@@ -187,6 +210,37 @@ python scripts/ui_smoke.py   # headless-browser run through every page, fails on
 Also added to the API for the UI: `GET /api/sample/{seed}/image` and `/truth` (deterministic generated parts with ground truth),
 `GET /api/jobs/{id}/frame_stats`, and the built dashboard is served at `/` so the whole thing runs as one process.
 
+## Part 6: Docker, CI and packaging
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Three stages: Node builds the dashboard; **`runtime`** (default) is a slim Python image with ONNX Runtime only; **`full`** adds PyTorch (CPU) and Ultralytics for the PyTorch backend, training and export |
+| `docker-compose.yml` | `app` on port 8000 with a healthcheck and a volume for job output; `app-full` behind the `full` profile |
+| `docker/entrypoint.sh` | Regenerates the demo clip if it is missing, then starts the server |
+| `requirements-runtime.txt` / `requirements-train.txt` | Serving deps (no PyTorch) vs the full dev environment |
+| `.github/workflows/ci.yml` | Tests on Python 3.11 and 3.12 using only the serving deps, a dashboard build, and a Docker build followed by a `/api/health` smoke test |
+
+```bash
+make up                 # docker compose up --build
+make docker-full        # image with PyTorch too
+docker compose --profile full up --build app-full
+```
+
+Design notes:
+
+* **Why a slim image.** Inference runs on ONNX Runtime, so the default image never installs PyTorch. The registry hides the
+  PyTorch backend automatically when Ultralytics is not importable, so the UI only offers what the container can run.
+* **One worker on purpose.** The job queue, trackers and live sessions live in process memory, so the server runs a single
+  Uvicorn worker. Scale by running more containers behind a sticky load balancer, not with `--workers`.
+* **Runs as a non-root user**, with job output in `/data` (a named volume).
+* **Settings** are environment variables: `VI_MODELS_DIR`, `VI_IMGSZ`, `VI_JOBS_DIR`, `VI_DEMO_VIDEO`, `VI_MAX_UPLOAD_MB`, `VI_CORS`, `VI_FRONTEND_DIR`.
+
+**What was verified, and what was not.** The sandbox this was built in has no Docker daemon, so **the image itself was never built
+or run here**. Instead I checked the pieces it depends on: a clean virtualenv with only `requirements-runtime.txt` (no torch) passes all 24 tests,
+and a copy of exactly the files the Dockerfile copies, started through `docker/entrypoint.sh` with the demo clip deleted, regenerated the clip, served the dashboard,
+and processed the demo job end to end (6 parts, 7 defects, PDF report). The compose file and workflow parse as valid YAML. If `docker build` hits a problem on your machine,
+the CI Docker job will show it first; please open an issue with the log.
+
 ## Roadmap
 
 1. ✅ Foundations: dataset, metrics, baseline, tests
@@ -194,7 +248,7 @@ Also added to the API for the UI: `GET /api/sample/{seed}/image` and `/truth` (d
 3. ✅ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
 4. ✅ FastAPI backend: video upload, live stream, tracking, downloadable report
 5. ✅ React dashboard
-6. ⏳ Docker, CI, docs, polish
+6. ✅ Docker, CI, docs, polish
 
 ## Honest notes
 
@@ -204,3 +258,11 @@ Also added to the API for the UI: `GET /api/sample/{seed}/image` and `/truth` (d
   real dataset such as MVTec AD or NEU-DET only needs a new `data.yaml`.
 * Plates are axis-aligned with small positional jitter. The baseline relies on that,
   and the deep model does not.
+* Docker and the CI workflow were written and statically checked but not executed in the build environment (see Part 6).
+* INT8 accuracy and latency numbers come from a 2-core CPU VM whose speed varied between sessions. Compare ratios, not absolute milliseconds.
+* The webcam path was tested with synthetic frames, not a physical camera.
+
+## Ideas for next steps
+
+Real data (MVTec AD, NEU-DET) through the same YOLO-format pipeline; the pretraining ablation (`--scratch`); a GPU build with TensorRT or
+ONNX Runtime CUDA; a rotated-box head for plates that are not axis-aligned; and a message queue so jobs survive a restart and scale past one container.

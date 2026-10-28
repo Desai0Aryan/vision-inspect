@@ -1,0 +1,14 @@
+# Everything needed to SERVE the system (API, dashboard, ONNX inference, reports).
+# No PyTorch: the Docker "runtime" image installs only this file.
+numpy>=1.26
+opencv-python-headless>=4.9
+pyyaml>=6.0
+tqdm>=4.66
+onnxruntime>=1.18
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+websockets>=12
+reportlab>=4.0
+matplotlib>=3.8
+imageio-ffmpeg>=0.5
