@@ -1,6 +1,6 @@
 PY ?= python3
 
-.PHONY: data video baseline train compare export bench serve eval-video test clean
+.PHONY: data video baseline train compare export bench serve eval-video ui-build ui-dev ui-smoke test clean
 
 data:
 	$(PY) scripts/make_dataset.py --out data/inspect --train 600 --val 150 --test 150
@@ -28,6 +28,15 @@ serve:
 
 eval-video:
 	$(PY) scripts/eval_video.py --video data/demo/conveyor.mp4 --model int8 --stride 3
+
+ui-build:
+	cd frontend && npm install --no-audit --no-fund && npm run build
+
+ui-dev:
+	cd frontend && npm run dev
+
+ui-smoke:
+	$(PY) scripts/ui_smoke.py
 
 test:
 	$(PY) -m pytest -q

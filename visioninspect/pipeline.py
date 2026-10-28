@@ -112,6 +112,7 @@ def process_video(src: str | Path, out_dir: str | Path, detector, model_name: st
     t_start = time.perf_counter()
     idx = 0
     ema_fps, ema_lat = 0.0, 0.0
+    stamps: list[float] = []
 
     while True:
         ok, frame = cap.read()
@@ -154,7 +155,9 @@ def process_video(src: str | Path, out_dir: str | Path, detector, model_name: st
         n_rej = sum(1 for p in ptrack.all_parts() if p.rejected)
         alert = n_parts >= 3 and n_rej / n_parts > cfg.alert_defect_rate
         dt = time.perf_counter() - t0
-        ema_fps = (1 / dt) if ema_fps == 0 else 0.9 * ema_fps + 0.1 * (1 / dt)
+        stamps.append(time.perf_counter())
+        stamps = stamps[-30:]
+        ema_fps = (len(stamps) - 1) / (stamps[-1] - stamps[0]) if len(stamps) > 4 else 0.0
         if cfg.draw_hud:
             draw_hud(vis, ema_fps, ema_lat, n_parts, n_rej, len(dtrack.confirmed()), model_name, alert)
         vw.write(vis)

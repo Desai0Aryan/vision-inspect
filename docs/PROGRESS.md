@@ -1,7 +1,7 @@
 # Build progress
 
 ```
-[████████████████████░░░░░░░░░░]  4 / 6   (67%)
+[█████████████████████████░░░░░]  5 / 6   (83%)
 ```
 
 | # | Part | Status |
@@ -10,8 +10,8 @@
 | 2 | Train pretrained YOLO, compare against baseline (P / R / mAP) | ✅ done |
 | 3 | ONNX Runtime, INT8 quantization, batching, latency benchmarks | ✅ done |
 | 4 | FastAPI backend: upload, live stream, tracking, report | ✅ done |
-| 5 | React dashboard | ⏳ next |
-| 6 | Docker, CI, docs, polish | ⏳ |
+| 5 | React dashboard | ✅ done |
+| 6 | Docker, CI, docs, polish | ⏳ next |
 
 ## Part 1 deliverables
 - Reproducible dataset generator (4 classes) and YOLO-format writer
@@ -39,3 +39,10 @@
 - Close-camera clip: 6/6 parts, 100% OK/NOK verdicts, 7/7 unique defects, frame mAP@0.5 0.973; 1.23x real time with frame skipping
 - Known weakness documented: far camera (small parts) drops frame mAP to 0.51
 - 21 unit/integration tests passing
+
+## Part 5 deliverables
+- `frontend/` React 19 + Vite dashboard: Inspect a clip, Live, Single part, Models (built output in `frontend/dist`)
+- Belt timeline, KPI ledger, defect gallery, latency chart, report downloads, live webcam over WebSocket
+- API additions: sample parts with ground truth, frame stats, static dashboard serving
+- `scripts/ui_smoke.py` (headless browser run, zero console errors), screenshots in `docs/screenshots/`
+- 24 Python tests passing

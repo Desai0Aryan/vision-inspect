@@ -35,7 +35,8 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from visioninspect import CLASSES, __version__
 from visioninspect.live import LiveInspector
@@ -194,6 +195,22 @@ async def predict_image(file: UploadFile = File(...), model: str | None = Form(N
     return res
 
 
+# ----------------------------------------------------------------------------- generated sample parts
+@app.get("/api/sample/{seed}/image")
+def sample_image(seed: int):
+    """A freshly rendered part (deterministic per seed) so the UI can demo detection without uploads."""
+    from visioninspect.data.synth import render_sample
+    img, _ = render_sample(np.random.default_rng(int(seed) % (2**31)))
+    return Response(cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes(), media_type="image/jpeg")
+
+
+@app.get("/api/sample/{seed}/truth")
+def sample_truth(seed: int):
+    from visioninspect.data.synth import render_sample
+    _, labels = render_sample(np.random.default_rng(int(seed) % (2**31)))
+    return {"seed": seed, "defects": [{"class": CLASSES[int(c)], "box": [round(float(v), 1) for v in b[:4]]} for b in labels for c in [b[4]]]}
+
+
 # ----------------------------------------------------------------------------- video jobs
 @app.post("/api/jobs", status_code=202)
 async def create_job(file: UploadFile = File(...), model: str | None = Form(None), conf: float = Form(0.45),
@@ -303,6 +320,11 @@ def report_pdf(job_id: str):
     return _file(job_id, "report.pdf", "application/pdf", f"inspection_{job_id}.pdf")
 
 
+@app.get("/api/jobs/{job_id}/frame_stats")
+def frame_stats(job_id: str):
+    return _file(job_id, "frame_stats.json", "application/json")
+
+
 @app.get("/api/jobs/{job_id}/snapshots/{name}")
 def snapshot(job_id: str, name: str):
     if "/" in name or ".." in name:
@@ -391,3 +413,9 @@ def stream_demo(model: str | None = None, conf: float = 0.45, loop: bool = True)
                 break
 
     return StreamingResponse(gen(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+
+# ----------------------------------------------------------------------------- built dashboard (single-process deploy)
+_FRONT = Path(os.environ.get("VI_FRONTEND_DIR", ROOT / "frontend" / "dist"))
+if _FRONT.exists():
+    app.mount("/", StaticFiles(directory=_FRONT, html=True), name="ui")

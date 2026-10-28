@@ -4,10 +4,10 @@ Detect, localize and classify manufacturing defects in images and video, with a
 fair comparison between a classical baseline and a fine-tuned deep detector,
 an optimized (ONNX / INT8) inference path, a FastAPI service and a React dashboard.
 
-> **Build status:** Part 4 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
+> **Build status:** Part 5 of 6 complete. See [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ```
-[████████████████████░░░░░░░░░░] 4/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅  ·  API ✅
+[█████████████████████████░░░░░] 5/6 parts  ·  Foundations ✅  ·  YOLO vs baseline ✅  ·  Optimized inference ✅  ·  API ✅  ·  Dashboard ✅
 ```
 
 ## What is in Part 1
@@ -157,13 +157,43 @@ python scripts/make_demo_video.py --out data/demo/conveyor_far.mp4 --scale 0.62 
 python scripts/eval_video.py --video data/demo/conveyor.mp4 --model int8 --stride 3
 ```
 
+## Part 5: React dashboard
+
+![Inspection results](docs/screenshots/inspect-results.png)
+
+A React 19 + Vite app (`frontend/`), self-hosted fonts, light and dark themes, keyboard accessible, no UI framework.
+
+| Page | What you can do |
+|---|---|
+| **Inspect a clip** | Drop in a video or run the demo conveyor. Watch live preview frames and progress, then get the annotated video, a KPI ledger, a **belt timeline** (every part as a stamped OK / REJECT plate, every defect as a mark, click to seek the video), the best crop of each defect, a latency chart and PDF / CSV / JSON downloads |
+| **Live** | The demo line as a live MJPEG stream, or your own webcam sent frame by frame over a WebSocket with round-trip latency |
+| **Single part** | Generate a fresh part (dashed white boxes show the true defects) or drop in your own image, then see what the model finds and "found 2 of 2 real defects, no false alarms" |
+| **Models** | Classical vs YOLO, per-class AP, the speed ladder (PyTorch → ONNX → INT8), batching, and the whole-line video score |
+
+Model, confidence threshold and frame stride are adjustable on every page. The dashboard reads live results from the API,
+so the Models page always reflects whatever `make compare`, `make bench` and `make eval-video` last produced.
+
+```bash
+make ui-build            # one-off: npm install + build into frontend/dist
+make serve               # API + dashboard on http://localhost:8000
+make ui-dev              # optional: hot-reload dev server on :5173 (proxies to :8000)
+python scripts/ui_smoke.py   # headless-browser run through every page, fails on any console error
+```
+
+| Inspect (running) | Single part |
+|---|---|
+| ![running](docs/screenshots/inspect-running.png) | ![single part](docs/screenshots/single-part.png) |
+
+Also added to the API for the UI: `GET /api/sample/{seed}/image` and `/truth` (deterministic generated parts with ground truth),
+`GET /api/jobs/{id}/frame_stats`, and the built dashboard is served at `/` so the whole thing runs as one process.
+
 ## Roadmap
 
 1. ✅ Foundations: dataset, metrics, baseline, tests
 2. ✅ Train and compare a pretrained YOLO against the baseline
 3. ✅ Inference optimization: ONNX Runtime, INT8 quantization, batching, latency benchmarks
 4. ✅ FastAPI backend: video upload, live stream, tracking, downloadable report
-5. ⏳ React dashboard
+5. ✅ React dashboard
 6. ⏳ Docker, CI, docs, polish
 
 ## Honest notes
